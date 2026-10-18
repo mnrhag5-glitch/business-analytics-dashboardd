@@ -80,18 +80,19 @@ export default function useAnalytics({
   departmentId = "all",
 } = {}) {
   return useMemo(() => {
- const dateRange = getDateRange(
-  preset,
-  customStart,
-  customEnd,
-  new Date(),
-);
+    const dateRange = getDateRange(
+      preset,
+      customStart,
+      customEnd,
+      new Date(),
+    );
 
     const previousDateRange = getPreviousDateRange(dateRange);
 
     const ownerFilter = (item) =>
       matchesOwner(item, userId, departmentId);
 
+    // Leads created during the selected period.
     const currentLeads = filterByDate(
       leads,
       "createdAt",
@@ -104,23 +105,29 @@ export default function useAnalytics({
       previousDateRange,
     ).filter(ownerFilter);
 
+    // Quotations created during the selected period.
     const currentQuotations = filterByDate(
       quotations,
       "createdAt",
       dateRange,
     ).filter(ownerFilter);
 
+    // Deals created during the selected period.
     const currentDeals = filterByDate(
       deals,
       "createdAt",
       dateRange,
     ).filter(ownerFilter);
 
+    // All deals matching the selected team and department.
+    // Used for recent-record tables, not date-filtered KPIs.
     const ownedDeals = deals.filter(ownerFilter);
+
     const ownedDealIds = new Set(
       ownedDeals.map((deal) => deal.id),
     );
 
+    // All orders belonging to the matching deals.
     const ownedOrders = orders.filter((order) =>
       ownedDealIds.has(order.dealId),
     );
@@ -141,17 +148,19 @@ export default function useAnalytics({
       payments,
       "paymentDate",
       dateRange,
-    ).filter(
-      (payment) =>
-        ownedDealIds.has(payment.dealId),
+    ).filter((payment) =>
+      ownedDealIds.has(payment.dealId),
     );
 
     // Payment history through the selected period's end is
-    // needed to calculate the outstanding balance accurately.
+    // needed to calculate outstanding balances accurately.
     const paymentsThroughPeriodEnd = payments.filter(
       (payment) =>
         ownedDealIds.has(payment.dealId) &&
-        isOnOrBefore(payment.paymentDate, dateRange.endDate),
+        isOnOrBefore(
+          payment.paymentDate,
+          dateRange.endDate,
+        ),
     );
 
     const paymentsForCurrentOrders =
@@ -165,7 +174,9 @@ export default function useAnalytics({
       dateRange,
     ).filter(ownerFilter);
 
-    const currentRevenue = getCollectedAmount(currentPayments);
+    const currentRevenue = getCollectedAmount(
+      currentPayments,
+    );
 
     const outstandingRevenue = getOutstandingAmount(
       ownedOrders,
@@ -181,14 +192,21 @@ export default function useAnalytics({
       currentQuotations,
       currentDeals,
       currentOrders,
+
+      // Required by Recent Deals and Orders Overview tables.
+      ownedDeals,
+      ownedOrders,
+
       currentPayments,
       currentActivities,
 
       leadAnalytics: getLeadAnalytics(currentLeads),
-quotationAnalytics: getQuotationAnalytics(
-  currentQuotations,
-  currentDeals
-),
+
+      quotationAnalytics: getQuotationAnalytics(
+        currentQuotations,
+        currentDeals,
+      ),
+
       dealAnalytics: getDealAnalytics(currentDeals),
 
       orderAnalytics: getOrderAnalytics(

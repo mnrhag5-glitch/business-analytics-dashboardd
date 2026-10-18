@@ -16,15 +16,15 @@ function DateField({ label, value, onChange }) {
         {label}
       </span>
 
-      <input
-       type="text"
-inputMode="numeric"
-placeholder="YYYY-MM-DD"
-        value={value || ""}
-        onChange={(event) => onChange(event.target.value)}
-        aria-label={label}
-        className={dateInputClass}
-      />
+
+<input
+  type="date"
+  value={value || ""}
+  onChange={(event) => onChange(event.target.value)}
+  aria-label={label}
+  className={dateInputClass}
+/>
+
     </label>
   );
 }

@@ -33,7 +33,7 @@ export const deals = [
   {
     id: "DEAL-003",
     leadId: "LEAD-002",
-    quotationId: "QUO-003",
+    quotationId: "QUO-002",
     name: "BluePeak CRM Implementation",
     service: "CRM Implementation",
     category: "Software",
@@ -48,7 +48,7 @@ export const deals = [
   {
     id: "DEAL-004",
     leadId: "LEAD-003",
-    quotationId: "QUO-004",
+    quotationId: "QUO-003",
     name: "Northstar Marketing Campaign",
     service: "Digital Marketing",
     category: "Marketing",

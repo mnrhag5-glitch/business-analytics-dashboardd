@@ -30,9 +30,18 @@ export default function LeadsPage() {
     (lead) => lead.qualification === "Qualified",
   ).length;
 
+  const unqualifiedCount = rows.filter(
+    (lead) => lead.qualification === "Unqualified",
+  ).length;
+
   const convertedCount = rows.filter(
     (lead) => lead.status === "Converted",
   ).length;
+
+  const conversionRate =
+    rows.length > 0
+      ? ((convertedCount / rows.length) * 100).toFixed(1)
+      : "0.0";
 
   const pipelineValue = rows.reduce(
     (total, lead) => total + (Number(lead.estimatedValue) || 0),
@@ -41,12 +50,14 @@ export default function LeadsPage() {
 
   const columns = [
     {
-      header: "Lead",
-      accessor: "company",
-      searchValue: (row) => `${row.company} ${row.id}`,
+      header: "Lead / Company",
+      accessor: "name",
+      searchValue: (row) => `${row.name ?? ""} ${row.id}`,
       render: (row) => (
         <div className="min-w-36">
-          <p className="font-semibold text-slate-800">{row.company}</p>
+          <p className="font-semibold text-slate-800">
+            {row.name || "Unnamed company"}
+          </p>
           <p className="mt-1 text-xs text-slate-400">{row.id}</p>
         </div>
       ),
@@ -90,7 +101,7 @@ export default function LeadsPage() {
     exportToCSV(
       rows.map((lead) => ({
         ID: lead.id,
-        Company: lead.company,
+        Company: lead.name,
         Contact: lead.contactName,
         Email: lead.email,
         Phone: lead.phone,
@@ -120,10 +131,22 @@ export default function LeadsPage() {
       iconStyle: "bg-violet-50 text-violet-600",
     },
     {
+      label: "Unqualified leads",
+      value: unqualifiedCount,
+      icon: Users,
+      iconStyle: "bg-rose-50 text-rose-600",
+    },
+    {
       label: "Converted leads",
       value: convertedCount,
       icon: CheckCircle2,
       iconStyle: "bg-emerald-50 text-emerald-600",
+    },
+    {
+      label: "Conversion rate",
+      value: `${conversionRate}%`,
+      icon: CheckCircle2,
+      iconStyle: "bg-sky-50 text-sky-600",
     },
     {
       label: "Estimated pipeline",
@@ -146,7 +169,7 @@ export default function LeadsPage() {
           }}
         />
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
           {summaryCards.map(({ label, value, icon: Icon, iconStyle }) => (
             <article
               key={label}
@@ -154,7 +177,9 @@ export default function LeadsPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-medium text-slate-500">{label}</p>
-                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconStyle}`}>
+                <span
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconStyle}`}
+                >
                   <Icon size={19} />
                 </span>
               </div>

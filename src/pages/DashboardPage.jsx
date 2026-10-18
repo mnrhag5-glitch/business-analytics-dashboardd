@@ -8,13 +8,18 @@ import {
   Users,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { eachDayOfInterval, isValid } from "date-fns";
+import {
+  eachDayOfInterval,
+  isValid,
+  differenceInCalendarDays,
+  subDays,
+  startOfDay,
+} from "date-fns";
 import AppLayout from "../components/layout/AppLayout";
 import PageHeader from "../components/layout/PageHeader";
 import DateRangeFilter from "../components/filters/DateRangeFilter";
 import UserFilter from "../components/filters/UserFilter";
 import DepartmentFilter from "../components/filters/DepartmentFilter";
-
 import KpiCard from "../components/dashboard/KpiCard";
 import ChartCard from "../components/dashboard/ChartCard";
 
@@ -40,6 +45,23 @@ import {
   formatCompactCurrency,
   formatDate,
 } from "../utils/formatters";
+
+function getSafeChartDays(start, end) {
+  if (!isValid(start) || !isValid(end) || start > end) {
+    return [];
+  }
+
+  const safeEnd = startOfDay(end);
+  const safeStart =
+    differenceInCalendarDays(safeEnd, startOfDay(start)) > 365
+      ? subDays(safeEnd, 365)
+      : startOfDay(start);
+
+  return eachDayOfInterval({
+    start: safeStart,
+    end: safeEnd,
+  });
+}
 
 export default function DashboardPage() {
   const {
@@ -71,6 +93,8 @@ export default function DashboardPage() {
     currentOrders = [],
     currentPayments = [],
     currentActivities = [],
+    ownedDeals = [],
+    ownedOrders = [],
     leadAnalytics,
     revenueAnalytics,
     dateRange,
@@ -98,7 +122,6 @@ export default function DashboardPage() {
     (payment) => payment.status === "Completed",
   );
 
-
   const trendCounts = currentLeads.reduce((result, lead) => {
     const date = new Date(lead.createdAt);
 
@@ -111,6 +134,7 @@ export default function DashboardPage() {
     ].join("-");
 
     result[key] = (result[key] || 0) + 1;
+
     return result;
   }, {});
 
@@ -119,10 +143,10 @@ export default function DashboardPage() {
     dateRange?.endDate &&
     isValid(new Date(dateRange.startDate)) &&
     isValid(new Date(dateRange.endDate))
-      ? eachDayOfInterval({
-          start: new Date(dateRange.startDate),
-          end: new Date(dateRange.endDate),
-        }).map((date) => {
+      ? getSafeChartDays(
+  new Date(dateRange.startDate),
+  new Date(dateRange.endDate),
+).map((date) => {
           const key = [
             date.getFullYear(),
             String(date.getMonth() + 1).padStart(2, "0"),
@@ -137,37 +161,37 @@ export default function DashboardPage() {
         })
       : [];
 
+  const revenueMap = completedPayments.reduce((result, payment) => {
+    const key = String(payment.paymentDate).slice(0, 10);
 
+    result[key] =
+      (result[key] || 0) + (Number(payment.amount) || 0);
 
-const revenueMap = completedPayments.reduce((result, payment) => {
-  const key = String(payment.paymentDate).slice(0, 10);
-  result[key] = (result[key] || 0) + (Number(payment.amount) || 0);
-  return result;
-}, {});
+    return result;
+  }, {});
 
-const revenueTrendData =
-  dateRange?.startDate &&
-  dateRange?.endDate &&
-  isValid(new Date(dateRange.startDate)) &&
-  isValid(new Date(dateRange.endDate))
-    ? eachDayOfInterval({
-        start: new Date(dateRange.startDate),
-        end: new Date(dateRange.endDate),
-      }).map((date) => {
-        const key = [
-          date.getFullYear(),
-          String(date.getMonth() + 1).padStart(2, "0"),
-          String(date.getDate()).padStart(2, "0"),
-        ].join("-");
+  const revenueTrendData =
+    dateRange?.startDate &&
+    dateRange?.endDate &&
+    isValid(new Date(dateRange.startDate)) &&
+    isValid(new Date(dateRange.endDate))
+      ? getSafeChartDays(
+  new Date(dateRange.startDate),
+  new Date(dateRange.endDate),
+).map((date) => {
+          const key = [
+            date.getFullYear(),
+            String(date.getMonth() + 1).padStart(2, "0"),
+            String(date.getDate()).padStart(2, "0"),
+          ].join("-");
 
-        return {
-          date: key,
-          label: formatDate(date).replace(/\s\d{4}$/, ""),
-          revenue: revenueMap[key] || 0,
-        };
-      })
-    : [];
-
+          return {
+            date: key,
+            label: formatDate(date).replace(/\s\d{4}$/, ""),
+            revenue: revenueMap[key] || 0,
+          };
+        })
+      : [];
 
   const quotationStatusData = Object.entries(
     currentQuotations.reduce((result, quotation) => {
@@ -178,13 +202,26 @@ const revenueTrendData =
     }, {}),
   ).map(([name, value]) => ({ name, value }));
 
-  const dealStatusData = Object.entries(
-    currentDeals.reduce((result, deal) => {
-      result[deal.status] = (result[deal.status] || 0) + 1;
+const dealsForPipeline = ownedDeals.filter((deal) => {
+  if (!dateRange?.endDate) return true;
 
-      return result;
-    }, {}),
-  ).map(([name, value]) => ({ name, value }));
+  const createdAt = new Date(deal.createdAt);
+  const periodEnd = new Date(dateRange.endDate);
+
+  return (
+    !Number.isNaN(createdAt.getTime()) &&
+    createdAt <= periodEnd
+  );
+});
+
+const dealStatusData = Object.entries(
+  dealsForPipeline.reduce((result, deal) => {
+    result[deal.status] =
+      (result[deal.status] || 0) + 1;
+
+    return result;
+  }, {}),
+).map(([name, value]) => ({ name, value }));
 
   const activityRows = [...currentActivities]
     .sort((a, b) =>
@@ -192,18 +229,32 @@ const revenueTrendData =
     )
     .slice(0, 5);
 
+  const recentDeals = [...ownedDeals]
+    .sort((a, b) =>
+      String(b.createdAt).localeCompare(String(a.createdAt)),
+    )
+    .slice(0, 8);
+
+  const recentOrders = [...ownedOrders]
+    .sort((a, b) =>
+      String(b.createdAt).localeCompare(String(a.createdAt)),
+    )
+    .slice(0, 8);
+
   const leadColumns = [
     {
       header: "Lead",
-accessor: "name",
-render: (row) => (
-  <div className="min-w-0">
-    <p className="truncate font-semibold text-slate-800">
-      {row.name}
-    </p>
-    <p className="mt-1 text-xs text-slate-500">{row.id}</p>
-  </div>
-),
+      accessor: "name",
+      render: (row) => (
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-slate-800">
+            {row.name || "Unnamed company"}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {row.id}
+          </p>
+        </div>
+      ),
     },
     {
       header: "Service",
@@ -231,8 +282,12 @@ render: (row) => (
       accessor: "id",
       render: (row) => (
         <div className="min-w-0">
-          <p className="font-semibold text-slate-800">{row.id}</p>
-          <p className="mt-1 text-xs text-slate-500">{row.service}</p>
+          <p className="font-semibold text-slate-800">
+            {row.name || row.id}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {row.service}
+          </p>
         </div>
       ),
     },
@@ -295,7 +350,8 @@ render: (row) => (
     {
       header: "Due date",
       accessor: "dueDate",
-      render: (row) => formatDate(row.dueDate),
+      render: (row) =>
+        row.dueDate ? formatDate(row.dueDate) : "—",
     },
   ];
 
@@ -323,7 +379,10 @@ render: (row) => (
               onCustomEndChange={setCustomEnd}
             />
 
-            <UserFilter value={userId} onChange={setUserId} />
+            <UserFilter
+              value={userId}
+              onChange={setUserId}
+            />
 
             <DepartmentFilter
               value={departmentId}
@@ -362,7 +421,7 @@ render: (row) => (
             value={activeDeals.length}
             icon={BriefcaseBusiness}
             accent="violet"
-            description="Open sales opportunities"
+            description="Open sales opportunities in selected period"
           />
 
           <KpiCard
@@ -375,17 +434,15 @@ render: (row) => (
             description={`${completedPayments.length} completed payments in the selected period`}
           />
 
-
-<KpiCard
-  title="Outstanding Balance"
-  value={formatCompactCurrency(
-    revenueAnalytics?.outstanding ?? 0,
-  )}
-  icon={ClipboardList}
-  accent="amber"
-  description="Remaining balance across all orders as of period end"
-/>
-
+          <KpiCard
+            title="Outstanding"
+            value={formatCompactCurrency(
+              revenueAnalytics?.outstanding ?? 0,
+            )}
+            icon={ClipboardList}
+            accent="amber"
+            description="Outstanding order balance"
+          />
 
           <KpiCard
             title="Won Deals"
@@ -439,8 +496,7 @@ render: (row) => (
         <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
           <ChartCard
             title="Deal pipeline"
-            subtitle="Number of deals by sales status"
-          >
+subtitle="Current deal pipeline by sales status, through the selected period end"          >
             <div className="h-72 w-full">
               <DealStatusChart data={dealStatusData} />
             </div>
@@ -448,7 +504,7 @@ render: (row) => (
 
           <ChartCard
             title="Recent activity"
-            subtitle="Latest CRM updates"
+            subtitle="Latest CRM updates in the selected period"
             action={
               <Link
                 to="/activity"
@@ -527,7 +583,7 @@ render: (row) => (
         <section className="grid grid-cols-1 gap-5 2xl:grid-cols-2">
           <ChartCard
             title="Recent deals"
-            subtitle="Sales opportunities and progress"
+            subtitle="Latest sales opportunities across your selected team"
             action={
               <Link
                 to="/deals"
@@ -539,16 +595,14 @@ render: (row) => (
           >
             <DataTable
               columns={dealColumns}
-              data={[...currentDeals].sort((a, b) =>
-                String(b.createdAt).localeCompare(String(a.createdAt)),
-              )}
+              data={recentDeals}
               pageSize={4}
             />
           </ChartCard>
 
           <ChartCard
             title="Orders overview"
-            subtitle="Orders connected to the selected deals"
+            subtitle="Recent orders across deals owned by your selected team"
             action={
               <Link
                 to="/orders"
@@ -560,9 +614,7 @@ render: (row) => (
           >
             <DataTable
               columns={orderColumns}
-              data={[...currentOrders].sort((a, b) =>
-                String(b.createdAt).localeCompare(String(a.createdAt)),
-              )}
+              data={recentOrders}
               pageSize={4}
             />
           </ChartCard>

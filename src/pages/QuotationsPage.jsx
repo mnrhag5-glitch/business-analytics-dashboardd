@@ -1,6 +1,13 @@
 
 import { useMemo } from "react";
-import { Download, FileText, CheckCircle2, Wallet, BadgeCheck } from "lucide-react";
+import {
+  Download,
+  FileText,
+  CheckCircle2,
+  Wallet,
+  BadgeCheck,
+  TrendingUp,
+} from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
 import PageHeader from "../components/layout/PageHeader";
 import DataTable from "../components/tables/DataTable";
@@ -8,6 +15,7 @@ import StatusBadge from "../components/common/StatusBadge";
 import useAnalytics from "../hooks/useAnalytics";
 import { useDashboardFilters } from "../hooks/useDashboardFilters";
 import { leads } from "../data/leads";
+import { deals } from "../data/deals";
 import { users } from "../data/users";
 import { formatCurrency, formatDate } from "../utils/formatters";
 import { exportToCSV } from "../utils/exportUtils";
@@ -43,11 +51,26 @@ export default function QuotationsPage() {
     0,
   );
 
+  const quotationIdsWithDeals = new Set(
+    deals
+      .filter((deal) => deal.quotationId)
+      .map((deal) => deal.quotationId),
+  );
+
+  const convertedQuotationCount = rows.filter((quotation) =>
+    quotationIdsWithDeals.has(quotation.id),
+  ).length;
+
+  const conversionRate =
+    rows.length > 0
+      ? (convertedQuotationCount / rows.length) * 100
+      : 0;
+
   const columns = [
     {
       header: "Quotation",
       accessor: "id",
-      searchValue: (row) => `${row.id} ${row.version}`,
+      searchValue: (row) => `${row.id} ${row.version ?? ""}`,
       render: (row) => (
         <div className="min-w-28">
           <p className="font-semibold text-slate-800">{row.id}</p>
@@ -62,7 +85,7 @@ export default function QuotationsPage() {
       accessor: "leadId",
       searchValue: (row) => {
         const lead = getLead(row.leadId);
-        return `${row.leadId} ${lead?.company ?? ""}`;
+        return `${row.leadId} ${lead?.name ?? ""}`;
       },
       render: (row) => {
         const lead = getLead(row.leadId);
@@ -70,7 +93,7 @@ export default function QuotationsPage() {
         return (
           <div className="min-w-32">
             <p className="font-medium text-slate-800">
-              {lead?.company ?? "Unknown client"}
+              {lead?.name ?? "Unknown client"}
             </p>
             <p className="mt-1 text-xs text-slate-400">{row.leadId}</p>
           </div>
@@ -120,7 +143,7 @@ export default function QuotationsPage() {
       rows.map((quotation) => ({
         ID: quotation.id,
         LeadID: quotation.leadId,
-        Client: getLead(quotation.leadId)?.company ?? "",
+        Client: getLead(quotation.leadId)?.name ?? "",
         Service: quotation.service,
         Category: quotation.category ?? "",
         Amount: quotation.amount,
@@ -129,6 +152,9 @@ export default function QuotationsPage() {
         Owner: getOwnerName(quotation.assignedTo),
         CreatedAt: quotation.createdAt,
         ValidUntil: quotation.validUntil,
+        ConvertedToDeal: quotationIdsWithDeals.has(quotation.id)
+          ? "Yes"
+          : "No",
       })),
       "quotations-report.csv",
     );
@@ -159,6 +185,18 @@ export default function QuotationsPage() {
       icon: BadgeCheck,
       iconStyle: "bg-violet-50 text-violet-600",
     },
+    {
+      label: "Converted to deals",
+      value: convertedQuotationCount,
+      icon: TrendingUp,
+      iconStyle: "bg-cyan-50 text-cyan-600",
+    },
+    {
+      label: "Quote-to-deal conversion",
+      value: `${conversionRate.toFixed(1)}%`,
+      icon: TrendingUp,
+      iconStyle: "bg-amber-50 text-amber-600",
+    },
   ];
 
   return (
@@ -174,7 +212,7 @@ export default function QuotationsPage() {
           }}
         />
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
           {summaryCards.map(({ label, value, icon: Icon, iconStyle }) => (
             <article
               key={label}
@@ -182,7 +220,9 @@ export default function QuotationsPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-medium text-slate-500">{label}</p>
-                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconStyle}`}>
+                <span
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconStyle}`}
+                >
                   <Icon size={19} />
                 </span>
               </div>
