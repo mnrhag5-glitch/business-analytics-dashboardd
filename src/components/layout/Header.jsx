@@ -45,8 +45,8 @@ export default function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-30 hidden h-[72px] items-center justify-between gap-4 border-b px-5 backdrop-blur sm:flex sm:px-6 xl:px-8 ${
-        isDark
+className={`sticky top-0 z-30 flex min-h-[72px] items-center justify-between gap-3 border-b px-3 py-3 backdrop-blur sm:h-[72px] sm:px-6 sm:py-0 xl:px-8 ${
+    isDark
           ? "border-slate-700 bg-slate-900/95"
           : "border-slate-200 bg-white/95"
       }`}
@@ -54,8 +54,8 @@ export default function Header() {
       <form
         onSubmit={handleSearch}
         role="search"
-        className={`flex w-full max-w-md items-center gap-3 rounded-xl border px-3.5 transition focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-500/10 ${
-          isDark
+className={`flex min-w-0 flex-1 sm:w-full sm:flex-none sm:max-w-md items-center gap-2 rounded-xl border px-2 sm:gap-3 sm:px-3.5 transition focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-500/10 ${
+        isDark
             ? "border-slate-700 bg-slate-800 focus-within:bg-slate-800"
             : "border-slate-200 bg-slate-50 focus-within:bg-white"
         }`}
@@ -88,7 +88,7 @@ export default function Header() {
         </button>
       </form>
 
-      <div className="flex shrink-0 items-center gap-3 lg:gap-5">
+<div className="flex shrink-0 items-center gap-1 sm:gap-3 lg:gap-5">
         <div
           className={`hidden items-center gap-2 text-sm md:flex ${
             isDark ? "text-slate-300" : "text-slate-500"
@@ -107,11 +107,11 @@ export default function Header() {
         <button
           type="button"
           onClick={toggleTheme}
-          className={`inline-flex h-10 w-10 items-center justify-center rounded-xl transition ${
-            isDark
-              ? "text-amber-300 hover:bg-slate-800 hover:text-amber-200"
-              : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-          }`}
+className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition ${
+  isDark
+    ? "bg-slate-800 text-amber-300 hover:bg-slate-700"
+    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+}`}
           aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
           title={`Switch to ${isDark ? "light" : "dark"} mode`}
         >
