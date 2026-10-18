@@ -1,4 +1,7 @@
 
+
+
+import { useEffect, useState } from "react";
 import {
   Activity,
   BadgeIndianRupee,
@@ -360,6 +363,26 @@ const dealStatusData = Object.entries(
     dateRange?.startDate && dateRange?.endDate
       ? `${formatDate(dateRange.startDate)} – ${formatDate(dateRange.endDate)}`
       : "Selected period";
+
+
+
+const [globalSearch, setGlobalSearch] = useState("");
+
+useEffect(() => {
+  const handleDashboardSearch = (event) => {
+    setGlobalSearch(event.detail?.query ?? "");
+  };
+
+  window.addEventListener("dashboard-search", handleDashboardSearch);
+
+  return () => {
+    window.removeEventListener(
+      "dashboard-search",
+      handleDashboardSearch
+    );
+  };
+}, []);
+
 
   return (
     <AppLayout>

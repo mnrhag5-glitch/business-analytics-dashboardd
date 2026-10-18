@@ -25,7 +25,16 @@ export default function Header() {
 
     const query = search.trim();
 
-    if (!query) return;
+    window.dispatchEvent(
+      new CustomEvent("dashboard-search", {
+        detail: { query },
+      }),
+    );
+  }
+
+  function handleSearchChange(event) {
+    const query = event.target.value;
+    setSearch(query);
 
     window.dispatchEvent(
       new CustomEvent("dashboard-search", {
@@ -59,7 +68,7 @@ export default function Header() {
         <input
           type="search"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={handleSearchChange}
           placeholder="Search dashboard..."
           aria-label="Search dashboard"
           className={`h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400 ${
@@ -67,15 +76,16 @@ export default function Header() {
           }`}
         />
 
-        <span
-          className={`hidden rounded-md border px-1.5 py-1 text-[10px] md:inline ${
+        <button
+          type="submit"
+          className={`rounded-md px-2 py-1 text-xs font-medium transition ${
             isDark
-              ? "border-slate-600 bg-slate-700 text-slate-300"
-              : "border-slate-200 bg-white text-slate-400"
+              ? "text-slate-300 hover:bg-slate-700"
+              : "text-slate-500 hover:bg-slate-200 hover:text-slate-900"
           }`}
         >
           Search
-        </span>
+        </button>
       </form>
 
       <div className="flex shrink-0 items-center gap-3 lg:gap-5">
@@ -84,10 +94,7 @@ export default function Header() {
             isDark ? "text-slate-300" : "text-slate-500"
           }`}
         >
-          <CalendarDays
-            size={17}
-            className="text-slate-400"
-          />
+          <CalendarDays size={17} className="text-slate-400" />
           <span>{today}</span>
         </div>
 

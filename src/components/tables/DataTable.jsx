@@ -19,27 +19,87 @@ export default function DataTable({
   onRowClick,
 }) {
   const [query, setQuery] = useState("");
+  const [globalQuery, setGlobalQuery] = useState("");
   const [page, setPage] = useState(1);
 
-  const filteredData = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+  // Listen for global dashboard searches.
+  useEffect(() => {
+    const handleDashboardSearch = (event) => {
+      setGlobalQuery(
+        String(event.detail?.query ?? "").trim(),
+      );
+      setPage(1);
+    };
 
-    if (!normalizedQuery) return data;
-
-    return data.filter((row) =>
-      columns.some((column) => {
-        const value = column.searchValue
-          ? column.searchValue(row)
-          : column.accessor
-            ? row[column.accessor]
-            : "";
-
-        return String(value ?? "")
-          .toLowerCase()
-          .includes(normalizedQuery);
-      }),
+    window.addEventListener(
+      "dashboard-search",
+      handleDashboardSearch,
     );
-  }, [columns, data, query]);
+
+    return () => {
+      window.removeEventListener(
+        "dashboard-search",
+        handleDashboardSearch,
+      );
+    };
+  }, []);
+
+  // Filter rows using global and local search.
+  const filteredData = useMemo(() => {
+    const globalTerm = globalQuery.trim().toLowerCase();
+    const localTerm = query.trim().toLowerCase();
+
+    if (!globalTerm && !localTerm) {
+      return data;
+    }
+
+    return data.filter((row) => {
+      const searchableValues = columns.map((column) => {
+        if (typeof column.searchValue === "function") {
+          return column.searchValue(row);
+        }
+
+        if (column.accessor) {
+          return row[column.accessor];
+        }
+
+        return "";
+      });
+
+      // Also search other row fields, including IDs and values
+      // that may not be directly displayed in a table column.
+      const rowValues =
+        row && typeof row === "object"
+          ? Object.values(row)
+          : [row];
+
+      const searchableText = [
+        ...searchableValues,
+        ...rowValues,
+      ]
+        .map((value) => {
+          if (
+            value === null ||
+            value === undefined ||
+            typeof value === "object"
+          ) {
+            return "";
+          }
+
+          return String(value);
+        })
+        .join(" ")
+        .toLowerCase();
+
+      const matchesGlobal =
+        !globalTerm || searchableText.includes(globalTerm);
+
+      const matchesLocal =
+        !localTerm || searchableText.includes(localTerm);
+
+      return matchesGlobal && matchesLocal;
+    });
+  }, [columns, data, query, globalQuery]);
 
   const safePageSize =
     Number.isFinite(pageSize) && pageSize > 0
@@ -61,7 +121,13 @@ export default function DataTable({
 
   useEffect(() => {
     setPage((current) =>
-      Math.min(current, Math.max(1, Math.ceil(filteredData.length / safePageSize))),
+      Math.min(
+        current,
+        Math.max(
+          1,
+          Math.ceil(filteredData.length / safePageSize),
+        ),
+      ),
     );
   }, [filteredData.length, safePageSize]);
 
@@ -87,7 +153,9 @@ export default function DataTable({
             <input
               type="search"
               value={query}
-              onChange={(event) => handleSearch(event.target.value)}
+              onChange={(event) =>
+                handleSearch(event.target.value)
+              }
               placeholder={searchPlaceholder}
               aria-label={searchPlaceholder}
               className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
@@ -173,7 +241,10 @@ export default function DataTable({
           Showing{" "}
           {filteredData.length === 0 ? 0 : startIndex + 1}
           {"–"}
-          {Math.min(startIndex + safePageSize, filteredData.length)}
+          {Math.min(
+            startIndex + safePageSize,
+            filteredData.length,
+          )}
           {" of "}
           {filteredData.length}
         </span>
