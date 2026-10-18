@@ -277,9 +277,10 @@ const dealStatusData = Object.entries(
   ];
 
   const dealColumns = [
-    {
-      header: "Deal",
-      accessor: "id",
+  {
+  header: "Deal",
+  accessor: "id",
+  searchValue: (row) => `${row.name ?? ""} ${row.service ?? ""} ${row.id ?? ""}`,
       render: (row) => (
         <div className="min-w-0">
           <p className="font-semibold text-slate-800">
